@@ -7,3 +7,6 @@ load_dotenv()
 EMAIL = os.getenv("EMAIL")
 PASSWORD = os.getenv("PASSWORD")
 USE_REGISTRATION = int(os.getenv("USE_REGISTRATION", 0))
+
+SCORE_THRESHOLD = int(os.getenv("SCORE_THRESHOLD", 22))
+PENALTY_RATIO = float(os.getenv("PENALTY_RATIO", 0.7))

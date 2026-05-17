@@ -1,0 +1,1 @@
+from .keyword_loader import load_keywords

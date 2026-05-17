@@ -10,6 +10,8 @@ class _Order:
     price: float
     username: str
     url: str
+    score: int | None = None
+    matched_keywords: list[str] | None = None
 
 
 def parse_orders(html: str) -> list[_Order]:
