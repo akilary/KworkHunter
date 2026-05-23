@@ -1,5 +1,8 @@
 import json
+import logging
 from dataclasses import dataclass
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -16,24 +19,28 @@ class _Order:
 
 def parse_orders(html: str) -> list[_Order]:
     """Парсит список заказов из HTML страницы Kwork"""
+    log.debug("Начало парсинга HTML страницы заказов")
+
     state_data_start = html.find('window.stateData=')
     if state_data_start == -1:
-        raise ValueError("Не удалось найти 'window.stateData=' в HTML странице")
+        log.error("Не найден 'window.stateData=' в HTML странице")
+        return []
 
     json_start = html.find("{", state_data_start)
     if json_start == -1:
-        raise ValueError(
-            "Не удалось определить начало JSON с данными заказов"
-        )
+        log.error("Не удалось определить начало JSON")
+        return []
 
     json_end = html.find("};", json_start)
     if json_end == -1:
-        raise ValueError("Не удалось определить начало JSON с данными заказов")
+        log.error("Не удалось определить конец JSON")
+        return []
 
     try:
         state_data = json.loads(html[json_start:json_end + 1])
     except json.JSONDecodeError as e:
-        raise ValueError(f"Ошибка декодирования stateData JSON: {e}") from e
+        log.exception("Ошибка декодирования stateData JSON")
+        return []
 
     raw_orders = (
         state_data
@@ -43,44 +50,50 @@ def parse_orders(html: str) -> list[_Order]:
     )
 
     if not raw_orders:
-        print("Список заказов пуст или данные отсутствуют")
+        log.warning("Список заказов пуст или данные отсутствуют")
         return []
+
+    log.info("Получено сырых заказов: %d", len(raw_orders))
 
     orders = []
     for i, order in enumerate(raw_orders, 1):
         try:
             order_id = int(order.get("id"))
         except (TypeError, ValueError):
-            print(
-                f"Пропуск заказа #{i}: некорректный order_id "
-                f"({order.get('id')})"
-            )
+            log.warning("Пропуск заказа #%d: некорректный order_id (%s)", i, order.get("id"))
             continue
 
         try:
             price = float(order.get("priceLimit", 0.0))
         except (TypeError, ValueError):
-            print(f"Некорректная цена у заказа {order_id}, установлено значение 0.0")
+            log.warning("Некорректная цена у заказа %s, установлено значение 0.0", order_id)
             price = 0.0
 
         title = order.get("name", "").strip()
         if not title:
-            print(f"У заказа {order_id} отсутствует title")
+            log.warning("У заказа %s отсутствует title", order_id)
 
-        orders.append(
-            _Order(
-                id=order_id,
-                title=title or "-",
-                description=order.get("description", "").strip(),
-                price=price,
-                username=order.get("user", {}).get("username", "-"),
-                url=f"https://kwork.ru/projects/{order_id}",
-            )
+        parsed_order = _Order(
+            id=order_id,
+            title=title or "-",
+            description=order.get("description", "").strip(),
+            price=price,
+            username=order.get("user", {}).get("username", "-"),
+            url=f"https://kwork.ru/projects/{order_id}",
         )
 
+        log.debug(
+            "Заказ обработан: id=%s | price=%.2f | user=%s",
+            parsed_order.id,
+            parsed_order.price,
+            parsed_order.username,
+        )
+
+        orders.append(parsed_order)
+
     if not orders:
-        print("После обработки не осталось валидных заказов")
+        log.warning("После обработки не осталось валидных заказов")
         return []
 
+    log.info("Парсинг завершён успешно: валидных заказов=%d", len(orders))
     return orders
-

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -10,3 +11,6 @@ USE_REGISTRATION = int(os.getenv("USE_REGISTRATION", 0))
 
 SCORE_THRESHOLD = int(os.getenv("SCORE_THRESHOLD", 22))
 PENALTY_RATIO = float(os.getenv("PENALTY_RATIO", 0.7))
+
+LOG_DIR = Path("logs")
+LOG_FORMAT = "[%(asctime)s.%(msecs)03d] %(levelname)-8s %(name)s:%(lineno)d - %(message)s"
