@@ -23,3 +23,10 @@ def setup_logging(console_lvl: int = logging.INFO, file_lvl: int = logging.DEBUG
     if not root_logger.handlers:
         root_logger.addHandler(console_handler)
         root_logger.addHandler(file_handler)
+
+    # Приглушение шумных/сторонних библиотек
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("telegram").setLevel(logging.WARNING)
+    logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
