@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
 from services.kwork_monitor import check_kwork_orders
@@ -20,12 +21,7 @@ async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         log.error("check_orders_job вызван без chat_id")
         return
 
-    try:
-        orders = await asyncio.to_thread(check_kwork_orders)
-    except Exception:
-        log.exception("Ошибка при проверке заказов Kwork")
-        raise
-
+    orders = await asyncio.to_thread(check_kwork_orders)
     if not orders:
         log.debug("Подходящих заказов для отправки нет")
         return
@@ -45,7 +41,7 @@ async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
                 chat_id=chat_id,
                 text=message,
             )
-        except Exception:
+        except TelegramError:
             log.exception("Ошибка при отправке уведомления о заказе: id=%s", order.id)
             continue
 

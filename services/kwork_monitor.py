@@ -5,16 +5,17 @@ from time import sleep
 from config import USE_REGISTRATION, EMAIL, PASSWORD
 from filters import analyze_order_text
 from kwork import KworkClient, parse_orders
-from loaders import load_keywords
+from utils import load_keywords
+from models.order import Order
 
 log = logging.getLogger(__name__)
 
 
-def check_kwork_orders() -> list:
+def check_kwork_orders() -> list[Order]:
     """Проверка и фильтрация заказов"""
     try:
         keywords = load_keywords()
-    except Exception:
+    except (FileNotFoundError, ValueError):
         log.exception("Ошибка при загрузке ключевых слов")
         return []
 
@@ -22,7 +23,11 @@ def check_kwork_orders() -> list:
 
     if USE_REGISTRATION:
         log.info("Авторизация в Kwork...")
-        kwork_client.login(EMAIL, PASSWORD)
+
+        if not kwork_client.login(EMAIL, PASSWORD):
+            log.error("Не удалось авторизоваться в Kwork")
+            return []
+
         log.info("Авторизация выполнена успешно")
 
     all_orders = []

@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from fake_useragent import UserAgent
-from requests import Session, RequestException
+from requests import Session, RequestException, JSONDecodeError
 
 HEADERS = {
     "User-Agent": UserAgent().random,
@@ -100,7 +100,7 @@ class KworkClient:
             return success
         except RequestException:
             log.exception("Ошибка при отметке просмотров офферов", )
-        except ValueError:
+        except JSONDecodeError:
             log.exception("Не удалось декодировать JSON ответа")
 
         return False

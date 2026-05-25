@@ -1,23 +1,12 @@
 import json
 import logging
-from dataclasses import dataclass
+
+from models.order import Order
 
 log = logging.getLogger(__name__)
 
 
-@dataclass
-class _Order:
-    id: int
-    title: str
-    description: str
-    price: float
-    username: str
-    url: str
-    score: int | None = None
-    matched_keywords: list[str] | None = None
-
-
-def parse_orders(html: str) -> list[_Order]:
+def parse_orders(html: str) -> list[Order]:
     """Парсит список заказов из HTML страницы Kwork"""
     log.debug("Начало парсинга HTML страницы заказов")
 
@@ -38,7 +27,7 @@ def parse_orders(html: str) -> list[_Order]:
 
     try:
         state_data = json.loads(html[json_start:json_end + 1])
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         log.exception("Ошибка декодирования stateData JSON")
         return []
 
@@ -73,7 +62,7 @@ def parse_orders(html: str) -> list[_Order]:
         if not title:
             log.warning("У заказа %s отсутствует title", order_id)
 
-        parsed_order = _Order(
+        parsed_order = Order(
             id=order_id,
             title=title or "-",
             description=order.get("description", "").strip(),

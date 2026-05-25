@@ -1,2 +1,2 @@
-from .kwork_client import KworkClient
-from .kwork_parser import parse_orders
+from .client import KworkClient
+from .parser import parse_orders

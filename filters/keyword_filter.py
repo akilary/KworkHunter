@@ -2,7 +2,7 @@ import re
 
 import pymorphy3
 
-from config import SCORE_THRESHOLD, PENALTY_RATIO
+from models import ScoreResult
 
 morph = pymorphy3.MorphAnalyzer()
 
@@ -16,25 +16,6 @@ MANUAL_REPLACEMENTS = {
     "пасринг": "парсинг"
 }
 
-
-class _ScoreResult:
-    def __init__(self):
-        self.positive = 0
-        self.negative = 0
-        self.matched_positive = []
-        self.matched_negative = []
-
-    def net(self) -> int:
-        """Возвращает итоговый score: positive - negative"""
-        return self.positive - self.negative
-
-    def passed(self) -> bool:
-        """Проверяет, проходит ли текст по порогам score и штрафов"""
-        if self.positive < SCORE_THRESHOLD:
-            return False
-        if self.positive > 0 and (self.negative / self.positive) > PENALTY_RATIO:
-            return False
-        return True
 
 
 def _lemmatize_word(word: str) -> str:
@@ -75,10 +56,10 @@ def _normalize_order(order_text: str) -> str:
     return " ".join(tokens)
 
 
-def analyze_order_text(text: str, keywords: dict[str, dict[str, int]]) -> _ScoreResult:
+def analyze_order_text(text: str, keywords: dict[str, dict[str, int]]) -> ScoreResult:
     """Подсчитывает positive/negative score по ключевым словам"""
     normalized_text = _normalize_order(text)
-    scores_result = _ScoreResult()
+    scores_result = ScoreResult()
 
     for category in ("positive", "negative"):
         for keyword, weight in keywords[category].items():
