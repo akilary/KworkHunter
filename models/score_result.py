@@ -3,10 +3,10 @@ from config import SCORE_THRESHOLD, PENALTY_RATIO
 
 class ScoreResult:
     def __init__(self):
-        self.positive = 0
-        self.negative = 0
-        self.matched_positive = []
-        self.matched_negative = []
+        self.positive: int = 0
+        self.negative: int = 0
+        self.matched_positive: list[tuple[str, int]] = []
+        self.matched_negative: list[tuple[str, int]] = []
 
     def net(self) -> int:
         """Возвращает итоговый score: positive - negative"""
