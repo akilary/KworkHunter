@@ -4,14 +4,17 @@ from telegram.ext import ApplicationBuilder, CommandHandler
 
 from bot.handlers import start
 from config import BOT_TOKEN
+from database.engine import create_engine
 from utils import setup_logging
-
 
 setup_logging()
 log = logging.getLogger(__name__)
 
+
 def main() -> None:
     """Точка входа"""
+    create_engine()
+
     log.info("Запуск Telegram-бота")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()

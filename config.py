@@ -18,3 +18,5 @@ LOG_FORMAT = "[%(asctime)s.%(msecs)03d] %(levelname)-8s %(name)s:%(lineno)d - %(
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 INTERVAL = int(os.getenv("INTERVAL", 3))
 OWNER_ID = int(os.getenv("OWNER_ID", -1))
+
+DB_PATH = os.getenv("DB_PATH")

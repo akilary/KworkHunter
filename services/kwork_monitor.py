@@ -3,10 +3,11 @@ from random import uniform
 from time import sleep
 
 from config import USE_REGISTRATION, EMAIL, PASSWORD
+from database.requests import add_orders, get_processed_order_ids
 from filters import analyze_order_text
 from kwork import KworkClient, parse_orders
-from utils import load_keywords
 from models.order import Order
+from utils import load_keywords
 
 log = logging.getLogger(__name__)
 
@@ -56,14 +57,14 @@ def check_kwork_orders() -> list[Order]:
 
         if order_analysis.passed():
             order.score = order_analysis.net()
-            order.matched_keywords = order_analysis.matched_positive
+            order.matched_keywords = [kb[0] for kb in order_analysis.matched_positive]
             passed_orders.append(order)
 
             log.debug(
                 "Заказ прошёл фильтр: id=%s | score=%s | ключевые слова=%s",
                 order.id,
                 order.score,
-                ", ".join(kb[0] for kb in order.matched_keywords),
+                ", ".join(order.matched_keywords),
             )
 
     if USE_REGISTRATION and passed_orders:
@@ -72,6 +73,25 @@ def check_kwork_orders() -> list[Order]:
 
         kwork_client.add_offer_views(order_ids)
         log.info("Просмотры офферов успешно отправлены")
+
+    processed_order_ids = get_processed_order_ids()
+
+    new_passed_orders = [
+        order
+        for order in passed_orders
+        if order.id not in processed_order_ids
+    ]
+
+    log.info(
+        "Фильтрация уже обработанных заказов: подошло=%d | новых=%d | уже были=%d",
+        len(passed_orders),
+        len(new_passed_orders),
+        len(passed_orders) - len(new_passed_orders),
+    )
+
+    add_orders(new_passed_orders)
+
+    passed_orders = new_passed_orders
 
     log.info("Работа завершена")
     log.info(
