@@ -31,3 +31,5 @@ def setup_logging(console_lvl: int = logging.INFO, file_lvl: int = logging.DEBUG
     logging.getLogger("telegram.ext").setLevel(logging.WARNING)
     logging.getLogger("apscheduler").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
