@@ -5,12 +5,13 @@ from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
 from services.kwork_monitor import check_kwork_orders
+from database.requests import delete_expired_orders
 
 log = logging.getLogger(__name__)
 
 
 async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Проверка и отправка заказов"""
+    """Задача для проверки и отправки заказов"""
     job = context.job
     if job is None:
         log.error("check_orders_job вызван без context.job")
@@ -46,3 +47,9 @@ async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
             continue
 
         log.info("Уведомление о заказе отправлено: id=%s | chat_id=%s", order.id, chat_id)
+
+
+async def cleanup_expired_job(_) -> None:
+    """Задача для удаления просроченных заказов из базы данных"""
+    log.debug("Очистка просроченных заказов")
+    await asyncio.to_thread(delete_expired_orders)

@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime, timedelta
 
 from models.order import Order
 
@@ -62,6 +63,19 @@ def parse_orders(html: str) -> list[Order]:
         if not title:
             log.warning("У заказа %s отсутствует title", order_id)
 
+        try:
+            date_expire = datetime.strptime(
+                order.get("date_expire", ""),
+                "%Y-%m-%d %H:%M:%S"
+            )
+        except (TypeError, ValueError):
+            log.warning(
+                "Некорректная дата окончания у заказа %s (%s), используется значение по умолчанию",
+                order_id,
+                order.get("date_expire"),
+            )
+            date_expire = datetime.now() + timedelta(days=3)
+
         parsed_order = Order(
             id=order_id,
             title=title or "-",
@@ -69,6 +83,7 @@ def parse_orders(html: str) -> list[Order]:
             price=price,
             username=order.get("user", {}).get("username", "-"),
             url=f"https://kwork.ru/projects/{order_id}",
+            date_expire=date_expire + timedelta(hours=2),
         )
 
         log.debug(

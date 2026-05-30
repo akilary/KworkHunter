@@ -21,6 +21,7 @@ def create_engine() -> None:
                 price REAL NOT NULL,
                 username TEXT NOT NULL,
                 url TEXT NOT NULL,
+                date_expire TEXT NOT NULL,
                 score INTEGER,
                 matched_keywords TEXT
             )

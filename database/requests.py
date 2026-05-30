@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from datetime import datetime
 
 from config import DB_PATH
 from models import Order
@@ -27,11 +28,12 @@ def add_orders(orders: list[Order]) -> None:
                         price,
                         username,
                         url,
+                        date_expire,
                         score,
                         matched_keywords
                         )
                     VALUES
-                        (?, ?, ?, ?, ?, ?, ?, ?)
+                        (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -41,6 +43,7 @@ def add_orders(orders: list[Order]) -> None:
                         order.price,
                         order.username,
                         order.url,
+                        order.date_expire.isoformat(sep=" "),
                         order.score,
                         "; ".join(order.matched_keywords) if order.matched_keywords else None
                     )
@@ -58,7 +61,7 @@ def add_orders(orders: list[Order]) -> None:
         raise
 
 
-def get_processed_order_ids() -> list[int]:
+def get_processed_order_ids() -> set[int]:
     """Возвращает ID уже обработанных заказов из базы данных"""
     log.debug("Загрузка ID обработанных заказов из базы данных")
 
@@ -66,7 +69,27 @@ def get_processed_order_ids() -> list[int]:
         with sqlite3.connect(DB_PATH) as con:
             cur = con.cursor()
             cur.execute("SELECT external_id FROM Orders")
-            return [row[0] for row in cur.fetchall()]
+            return {row[0] for row in cur.fetchall()}
     except sqlite3.Error:
         log.exception("Ошибка при загрузке ID обработанных заказов из базы данных")
+        raise
+
+
+def delete_expired_orders() -> None:
+    """Удаляет просроченные заказы"""
+    now = datetime.now().isoformat(sep=" ", timespec="seconds")
+
+    try:
+        with sqlite3.connect(DB_PATH) as con:
+            cur = con.cursor()
+            cur.execute("DELETE FROM Orders WHERE date_expire <= ?", (now,))
+
+            deleted_count = cur.rowcount
+
+            if deleted_count:
+                log.info("Удалены просроченные заказы: count=%d", deleted_count)
+            else:
+                log.debug("Просроченных заказов для удаления нет")
+    except sqlite3.Error:
+        log.exception("Ошибка при удалении просроченных заказов")
         raise
