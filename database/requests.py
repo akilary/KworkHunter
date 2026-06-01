@@ -2,8 +2,10 @@ import logging
 import sqlite3
 from datetime import datetime
 
-from config import DB_PATH
+from config import cfg
 from models import Order
+
+DB_PATH = cfg.DB_PATH
 
 log = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-from config import SCORE_THRESHOLD, PENALTY_RATIO
+from config import cfg
 
 
 class ScoreResult:
@@ -14,8 +14,8 @@ class ScoreResult:
 
     def passed(self) -> bool:
         """Проверяет, проходит ли текст по порогам score и штрафов"""
-        if self.positive < SCORE_THRESHOLD:
+        if self.positive < cfg.SCORE_THRESHOLD:
             return False
-        if self.positive > 0 and (self.negative / self.positive) > PENALTY_RATIO:
+        if self.positive > 0 and (self.negative / self.positive) > cfg.PENALTY_RATIO:
             return False
         return True

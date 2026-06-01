@@ -1,13 +1,16 @@
 import logging
 from logging.handlers import RotatingFileHandler
-from config import LOG_DIR, LOG_FORMAT
+
+from config import cfg
+
+LOG_DIR = cfg.LOG_DIR
 
 
 def setup_logging(console_lvl: int = logging.INFO, file_lvl: int = logging.DEBUG) -> None:
     """Настройка логгера"""
     LOG_DIR.mkdir(exist_ok=True)
 
-    formatter = logging.Formatter(LOG_FORMAT, "%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(cfg.LOG_FORMAT, "%Y-%m-%d %H:%M:%S")
 
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_lvl)

@@ -1,7 +1,9 @@
 import logging
 import sqlite3
 
-from config import DB_PATH
+from config import cfg
+
+DB_PATH = cfg.DB_PATH
 
 log = logging.getLogger(__name__)
 

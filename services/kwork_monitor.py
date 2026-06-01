@@ -2,7 +2,7 @@ import logging
 from random import uniform
 from time import sleep
 
-from config import USE_REGISTRATION, EMAIL, PASSWORD
+from config import cfg
 from database.requests import add_orders, get_processed_order_ids
 from filters import analyze_order_text
 from kwork import KworkClient, parse_orders
@@ -22,10 +22,10 @@ def check_kwork_orders() -> list[Order]:
 
     kwork_client = KworkClient()
 
-    if USE_REGISTRATION:
+    if cfg.USE_REGISTRATION:
         log.info("Авторизация в Kwork...")
 
-        if not kwork_client.login(EMAIL, PASSWORD):
+        if not kwork_client.login(cfg.EMAIL, cfg.PASSWORD):
             log.error("Не удалось авторизоваться в Kwork")
             return []
 
@@ -67,7 +67,7 @@ def check_kwork_orders() -> list[Order]:
                 ", ".join(order.matched_keywords),
             )
 
-    if USE_REGISTRATION and passed_orders:
+    if cfg.USE_REGISTRATION and passed_orders:
         order_ids = [order.id for order in passed_orders]
         log.info("Отправляем просмотры офферов для заказов: %d", len(order_ids))
 
