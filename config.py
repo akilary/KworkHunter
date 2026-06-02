@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import timezone, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -24,6 +25,8 @@ class Config:
     OWNER_ID: int = int(os.getenv("OWNER_ID", -1))
 
     DB_PATH: str | None = os.getenv("DB_PATH")
+
+    TIMEZONE: timezone = timezone(timedelta(hours=5))
 
 
 cfg = Config()
