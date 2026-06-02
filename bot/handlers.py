@@ -190,6 +190,9 @@ async def settings(update: Update, context: CallbackContext) -> None:
         f"{command}: {old_value} -> {new_value}"
     )
 
+    if command == "interval":
+        await start(update, context)
+
 
 async def _validate_owner_request(
         update: Update,
