@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes, JobQueue, CallbackContext
 
 from bot.jobs import check_orders_job, cleanup_expired_job
 from config import cfg
+from utils.message_formatter import build_start_message, build_settings_help_message, build_settings_message
 
 log = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     log.info("Задача очистки просроченных заказов запущена: chat_id=%s | interval_hours=1", chat_id)
 
-    await message.reply_text(f"Мониторинг Kwork запущен. Проверяю заказы каждые {cfg.INTERVAL} часа")
+    await message.reply_text(build_start_message(cfg.INTERVAL))
 
 
 async def stop(update: Update, context: CallbackContext) -> None:
@@ -83,14 +84,14 @@ async def stop(update: Update, context: CallbackContext) -> None:
 
     if not jobs:
         log.debug("Попытка остановить мониторинг при отсутствии активных задач")
-        await message.reply_text("Мониторинг уже остановлен или не был запущен")
+        await message.reply_text("ℹ️ Мониторинг уже остановлен или ещё не запускался")
         return
 
     for job in jobs:
         job.schedule_removal()
 
     log.info("Остановлен мониторинг: удалено задач=%d", len(jobs))
-    await message.reply_text("Мониторинг остановлен")
+    await message.reply_text("⛔ Мониторинг Kwork остановлен")
 
 
 async def settings(update: Update, context: CallbackContext) -> None:
@@ -109,15 +110,7 @@ async def settings(update: Update, context: CallbackContext) -> None:
 
     if len(args) != 2:
         log.warning("Некорректный формат команды /settings: user_id=%s | args=%s", user.id, args)
-        await message.reply_text(
-            "Формат: /settings настройка значение\n\n"
-            "Доступные настройки:\n"
-            "interval (i)\n"
-            "use_registration (reg)\n"
-            "score_threshold (score)\n"
-            "penalty_ratio (penalty)\n"
-            "time_zone (tz)"
-        )
+        await message.reply_text(build_settings_help_message())
         return
 
     raw_command = args[0].lower().strip()
@@ -186,7 +179,7 @@ async def settings(update: Update, context: CallbackContext) -> None:
 
     log.info("Настройка изменена: user_id=%s | %s: %s -> %s", user.id, command, old_value, new_value)
     await message.reply_text(
-        f"Настройка изменена:\n"
+        f"✅ Настройка изменена:\n"
         f"{command}: {old_value} -> {new_value}"
     )
 
@@ -254,7 +247,7 @@ async def _show_settings(job_queue: JobQueue, chat: Chat, message: Message) -> N
     jobs = job_queue.jobs()
     if not jobs:
         log.debug("Статус мониторинга: активные задачи отсутствуют: chat_id=%s", chat.id)
-        await message.reply_text("Мониторинг Kwork остановлен или не запускался")
+        await message.reply_text("ℹ️ Мониторинг Kwork остановлен или ещё не запускался")
         return
 
     active_jobs = [job for job in jobs if job.name and job.name.endswith(f"_{chat.id}")]
@@ -271,20 +264,6 @@ async def _show_settings(job_queue: JobQueue, chat: Chat, message: Message) -> N
         if job.next_t is not None
     )
 
-    lines = (
-        "Мониторинг Kwork активен",
-        f"Активных задач: {len(active_jobs)}",
-        "",
-        "Задачи:",
-        jobs_info,
-        "",
-        "Настройки:",
-        f"Интервал проверки: {cfg.INTERVAL} ч",
-        f"Порог релевантности: {cfg.SCORE_THRESHOLD}",
-        f"Штраф: {cfg.PENALTY_RATIO}",
-        f"Регистрация: {'включена' if cfg.USE_REGISTRATION else 'выключена'}",
-    )
-
     log.debug("Статус мониторинга сформирован: chat_id=%s | active_jobs=%d", chat.id, len(active_jobs))
 
-    await message.reply_text("\n".join(lines))
+    await message.reply_text(build_settings_message(len(active_jobs), jobs_info))

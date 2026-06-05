@@ -6,19 +6,19 @@ from config import cfg
 from database.requests import add_orders, get_processed_order_ids
 from filters import analyze_order_text
 from kwork import KworkClient, parse_orders
-from models.order import Order
+from models import KworkCheckResult
 from utils import load_keywords
 
 log = logging.getLogger(__name__)
 
 
-def check_kwork_orders() -> list[Order]:
+def check_kwork_orders() -> KworkCheckResult:
     """Проверка и фильтрация заказов"""
     try:
         keywords = load_keywords()
     except (FileNotFoundError, ValueError):
         log.exception("Ошибка при загрузке ключевых слов")
-        return []
+        return KworkCheckResult(0, 0, 0, 0, [])
 
     kwork_client = KworkClient()
 
@@ -27,7 +27,7 @@ def check_kwork_orders() -> list[Order]:
 
         if not kwork_client.login(cfg.EMAIL, cfg.PASSWORD):
             log.error("Не удалось авторизоваться в Kwork")
-            return []
+            return KworkCheckResult(0, 0, 0, 0, [])
 
         log.info("Авторизация выполнена успешно")
 
@@ -82,11 +82,13 @@ def check_kwork_orders() -> list[Order]:
         if order.id not in processed_order_ids
     ]
 
+    already_in_db_orders = len(passed_orders) - len(new_passed_orders)
+
     log.info(
         "Фильтрация уже обработанных заказов: подошло=%d | новых=%d | уже были=%d",
         len(passed_orders),
         len(new_passed_orders),
-        len(passed_orders) - len(new_passed_orders),
+        already_in_db_orders,
     )
 
     add_orders(new_passed_orders)
@@ -101,4 +103,10 @@ def check_kwork_orders() -> list[Order]:
         len(passed_orders),
     )
 
-    return passed_orders
+    return KworkCheckResult(
+        pages_checked=page - 1,
+        total_orders=len(all_orders),
+        passed_orders=len(passed_orders),
+        already_in_db_orders=already_in_db_orders,
+        new_orders=new_passed_orders,
+    )

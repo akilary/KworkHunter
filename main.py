@@ -5,7 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, Application
 from bot.handlers import start, stop, settings
 from config import cfg
 from database.engine import create_engine
-from utils import setup_logging
+from utils.logging_config import setup_logging
 
 setup_logging()
 log = logging.getLogger(__name__)

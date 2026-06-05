@@ -4,8 +4,9 @@ import logging
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
-from services.kwork_monitor import check_kwork_orders
 from database.requests import delete_expired_orders
+from services.kwork_monitor import check_kwork_orders
+from utils.message_formatter import build_summary_message, build_order_message
 
 log = logging.getLogger(__name__)
 
@@ -22,20 +23,28 @@ async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         log.error("check_orders_job вызван без chat_id")
         return
 
-    orders = await asyncio.to_thread(check_kwork_orders)
-    if not orders:
+    result = await asyncio.to_thread(check_kwork_orders)
+
+    if not result.new_orders:
         log.debug("Подходящих заказов для отправки нет")
         return
 
-    for order in sorted(orders, key=lambda o: o.score, reverse=True):
-        message = (
-            "Найден подходящий заказ\n\n"
-            f"{order.title}\n"
-            f"Цена: {order.price}\n"
-            f"Релевантность: {order.score}\n\n"
-            f"{order.description[:4000]}\n\n"
-            f"{order.url}"
-        )
+    sorted_orders = sorted(
+        result.new_orders,
+        key=lambda o: o.score or 0,
+        reverse=True,
+    )
+
+    try:
+        await context.bot.send_message(chat_id=chat_id, text=build_summary_message(result))
+    except TelegramError:
+        log.exception("Ошибка при отправке статистики проверки заказов")
+        return
+
+    total_orders = len(sorted_orders)
+
+    for i, order in enumerate(sorted_orders, start=1):
+        message = build_order_message(order, i, total_orders)
 
         try:
             await context.bot.send_message(
