@@ -57,7 +57,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         name=check_orders_job_name,
     )
 
-    log.info("Задача мониторинга Kwork запущена: chat_id=%s | interval_hours=%s", chat_id, cfg.INTERVAL)
+    log.info("Задача мониторинга Kwork запущена: chat_id=%d | interval_hours=%s", chat_id, cfg.INTERVAL)
 
     job_queue.run_repeating(
         cleanup_expired_job,
@@ -67,7 +67,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         name=cleanup_job_name,
     )
 
-    log.info("Задача очистки просроченных заказов запущена: chat_id=%s | interval_hours=1", chat_id)
+    log.info(
+        "Мониторинг запущен: chat_id=%d | interval_hours=%s",
+        chat_id,
+        cfg.INTERVAL,
+    )
 
     await message.reply_text(build_start_message(cfg.INTERVAL))
 
@@ -83,14 +87,14 @@ async def stop(update: Update, context: CallbackContext) -> None:
     jobs = job_queue.jobs()
 
     if not jobs:
-        log.debug("Попытка остановить мониторинг при отсутствии активных задач")
+        log.debug("Остановка мониторинга: активных задач нет")
         await message.reply_text("ℹ️ Мониторинг уже остановлен или ещё не запускался")
         return
 
     for job in jobs:
         job.schedule_removal()
 
-    log.info("Остановлен мониторинг: удалено задач=%d", len(jobs))
+    log.info("Мониторинг остановлен: удалено задач=%d", len(jobs))
     await message.reply_text("⛔ Мониторинг Kwork остановлен")
 
 
@@ -101,7 +105,6 @@ async def settings(update: Update, context: CallbackContext) -> None:
         return
 
     chat, message, user, job_queue = owner_context
-
     args = context.args
 
     if not args:
@@ -109,17 +112,16 @@ async def settings(update: Update, context: CallbackContext) -> None:
         return
 
     if len(args) != 2:
-        log.warning("Некорректный формат команды /settings: user_id=%s | args=%s", user.id, args)
+        log.warning("Некорректный формат /settings: user_id=%d | args=%s", user.id, args)
         await message.reply_text(build_settings_help_message())
         return
 
     raw_command = args[0].lower().strip()
     value = args[1].strip()
-
     command = SETTING_ALIASES.get(raw_command)
 
     if command is None:
-        log.warning("Попытка изменить неизвестную настройку: user_id=%s | setting=%s", user.id, raw_command)
+        log.warning("Неизвестная настройка: user_id=%d | setting=%s", user.id, raw_command)
         await message.reply_text(f"Неизвестная настройка: {raw_command}")
         return
 
@@ -160,15 +162,12 @@ async def settings(update: Update, context: CallbackContext) -> None:
                 cfg.TIMEZONE = timezone(timedelta(hours=hours))
                 new_value = cfg.TIMEZONE.__str__()
             case _:
-                log.warning("Попытка изменить неизвестную настройку: user_id=%s | setting=%s",
-                            user.id,
-                            command
-                            )
+                log.error("Неизвестная настройка прошла алиасы: user_id=%d | setting=%s", user.id, command)
                 await message.reply_text(f"Неизвестная настройка: {command}")
                 return
     except ValueError as e:
         log.warning(
-            "Некорректное значение настройки: user_id=%s | setting=%s | value=%s | error=%s",
+            "Некорректное значение настройки: user_id=%d | setting=%s | value=%s | error=%s",
             user.id,
             command,
             value,
@@ -177,7 +176,7 @@ async def settings(update: Update, context: CallbackContext) -> None:
         await message.reply_text(f"Некорректное значение: {value}")
         return
 
-    log.info("Настройка изменена: user_id=%s | %s: %s -> %s", user.id, command, old_value, new_value)
+    log.info("Настройка изменена: user_id=%d | %s: %s -> %s", user.id, command, old_value, new_value)
     await message.reply_text(
         f"✅ Настройка изменена:\n"
         f"{command}: {old_value} -> {new_value}"
@@ -200,7 +199,7 @@ async def _validate_owner_request(
         return None
 
     log.info(
-        "Получена команда /%s: user_id=%s | username=%s | chat_id=%s",
+        "Получена команда /%s: user_id=%d | username=%s | chat_id=%d",
         func_name,
         user.id,
         user.username,
@@ -208,14 +207,14 @@ async def _validate_owner_request(
     )
 
     if user.id != cfg.OWNER_ID:
-        log.warning("Отказ в доступе к /%s: user_id=%s | username=%s", func_name, user.id, user.username)
+        log.warning("Отказ в доступе к /%s: user_id=%d | username=%s", func_name, user.id, user.username)
         await message.reply_text("Нет доступа")
         return None
 
     job_queue = context.job_queue
 
     if job_queue is None:
-        log.error("JobQueue не подключён")
+        log.error("JobQueue не подключён при вызове /%s", func_name)
         await message.reply_text("JobQueue не подключён")
         return None
 
@@ -227,33 +226,28 @@ def _remove_old_jobs(job_queue: JobQueue, job_name: str, job_label: str, chat_id
     old_jobs = job_queue.get_jobs_by_name(job_name)
 
     if not old_jobs:
-        log.debug("Старые задачи %s не найдены: chat_id=%s", job_label, chat_id)
+        log.debug("Старые задачи '%s' не найдены: chat_id=%d", job_label, chat_id)
         return
 
     for job in old_jobs:
         job.schedule_removal()
 
-    if old_jobs:
-        log.info(
-            "Удалены старые задачи %s: chat_id=%s | count=%d",
-            job_label,
-            chat_id,
-            len(old_jobs),
-        )
+    log.info("Удалены старые задачи '%s': chat_id=%d | count=%d", job_label, chat_id, len(old_jobs))
 
 
 async def _show_settings(job_queue: JobQueue, chat: Chat, message: Message) -> None:
     """Показывает состояние мониторинга и текущие настройки"""
     jobs = job_queue.jobs()
+
     if not jobs:
-        log.debug("Статус мониторинга: активные задачи отсутствуют: chat_id=%s", chat.id)
+        log.debug("Запрос настроек: активных задач нет: chat_id=%d", chat.id)
         await message.reply_text("ℹ️ Мониторинг Kwork остановлен или ещё не запускался")
         return
 
     active_jobs = [job for job in jobs if job.name and job.name.endswith(f"_{chat.id}")]
 
     if not active_jobs:
-        log.debug("Для текущего чата активные задачи не найдены: chat_id=%s", chat.id)
+        log.debug("Запрос настроек: задачи для чата не найдены: chat_id=%d", chat.id)
         await message.reply_text("Для текущего чата активные задачи не найдены")
         return
 
@@ -264,6 +258,6 @@ async def _show_settings(job_queue: JobQueue, chat: Chat, message: Message) -> N
         if job.next_t is not None
     )
 
-    log.debug("Статус мониторинга сформирован: chat_id=%s | active_jobs=%d", chat.id, len(active_jobs))
+    log.debug("Настройки запрошены: chat_id=%d | active_jobs=%d", chat.id, len(active_jobs))
 
     await message.reply_text(build_settings_message(len(active_jobs), jobs_info))

@@ -26,7 +26,7 @@ async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     result = await asyncio.to_thread(check_kwork_orders)
 
     if not result.new_orders:
-        log.debug("Подходящих заказов для отправки нет")
+        log.debug("Новых подходящих заказов нет — уведомления не отправляются")
         return
 
     sorted_orders = sorted(
@@ -38,27 +38,22 @@ async def check_orders_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         await context.bot.send_message(chat_id=chat_id, text=build_summary_message(result))
     except TelegramError:
-        log.exception("Ошибка при отправке статистики проверки заказов")
+        log.exception("Ошибка при отправке сводки проверки: chat_id=%s", chat_id)
         return
 
     total_orders = len(sorted_orders)
 
     for i, order in enumerate(sorted_orders, start=1):
         message = build_order_message(order, i, total_orders)
-
         try:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=message,
-            )
+            await context.bot.send_message(chat_id=chat_id,text=message)
+            log.debug("Уведомление о заказе отправлено: id=%d | chat_id=%d", order.id, chat_id)
         except TelegramError:
-            log.exception("Ошибка при отправке уведомления о заказе: id=%s", order.id)
+            log.exception("Ошибка при отправке уведомления о заказе: id=%d | chat_id=%d", order.id, chat_id)
             continue
-
-        log.info("Уведомление о заказе отправлено: id=%s | chat_id=%s", order.id, chat_id)
 
 
 async def cleanup_expired_job(_) -> None:
     """Задача для удаления просроченных заказов из базы данных"""
-    log.debug("Очистка просроченных заказов")
+    log.debug("Запуск очистки просроченных заказов")
     await asyncio.to_thread(delete_expired_orders)

@@ -43,7 +43,7 @@ def parse_orders(html: str) -> list[Order]:
         log.warning("Список заказов пуст или данные отсутствуют")
         return []
 
-    log.info("Получено сырых заказов: %d", len(raw_orders))
+    log.debug("Получено сырых заказов: %d", len(raw_orders))
 
     orders = []
     for i, order in enumerate(raw_orders, 1):
@@ -61,7 +61,7 @@ def parse_orders(html: str) -> list[Order]:
 
         title = order.get("name", "").strip()
         if not title:
-            log.warning("У заказа %s отсутствует title", order_id)
+            log.warning("У заказа %d отсутствует title", order_id)
 
         try:
             date_expire = datetime.strptime(
@@ -70,9 +70,9 @@ def parse_orders(html: str) -> list[Order]:
             )
         except (TypeError, ValueError):
             log.warning(
-                "Некорректная дата окончания у заказа %s (%s), используется значение по умолчанию",
+                "Некорректная дата окончания у заказа id=%s (%s), используется значение по умолчанию",
                 order_id,
-                order.get("date_expire"),
+                order.get("date_expire")
             )
             date_expire = datetime.now() + timedelta(days=3)
 
@@ -95,9 +95,5 @@ def parse_orders(html: str) -> list[Order]:
 
         orders.append(parsed_order)
 
-    if not orders:
-        log.warning("После обработки не осталось валидных заказов")
-        return []
-
-    log.info("Парсинг завершён успешно: валидных заказов=%d", len(orders))
+    log.info("Парсинг завершён успешно: валидных заказов=%d | сырых=%d", len(orders), len(raw_orders))
     return orders

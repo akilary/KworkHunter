@@ -1,8 +1,10 @@
+import re
 from datetime import datetime
 
 from config import cfg
 from models import KworkCheckResult
 from models.order import Order
+from html import unescape
 
 
 def build_start_message(interval: int) -> str:
@@ -67,8 +69,10 @@ def build_order_message(order: Order, index: int, total: int) -> str:
     """Создаёт сообщение с информацией о заказе"""
     price = _format_price(order.price)
     score = order.score if order.score is not None else "—"
-    keywords = _format_keywords(order.matched_keywords)
-    description = _trim_text(order.description, limit=3000)
+    keywords = ", ".join(order.matched_keywords[:8]) if order.matched_keywords else ""
+
+    title = _format_text(order.title)
+    description = _format_text(order.description, limit=3000)
 
     message = (
         f"📌 Заказ #{index} из {total}\n\n"
@@ -80,7 +84,7 @@ def build_order_message(order: Order, index: int, total: int) -> str:
         message += f"🏷️ Ключевые слова: {keywords}\n"
 
     message += (
-        f"\n{order.title}\n\n"
+        f"\n{title}\n\n"
         f"{description}\n\n"
         f"🔗 {order.url}"
     )
@@ -96,19 +100,19 @@ def _format_price(price: float) -> str:
     return f"{price:,.2f} ₽".replace(",", " ")
 
 
-def _format_keywords(keywords: list[str] | None) -> str:
-    """Объединяет ключевые слова в строку"""
-    if not keywords:
-        return ""
+def _format_text(text: str, limit: int | None = None) -> str:
+    """Форматирует текст: HTML-сущности, emoji-плейсхолдеры, пробелы, обрезка"""
+    text = unescape(text).strip()
 
-    return ", ".join(keywords[:8])
+    def replace_unicode(match: re.Match) -> str:
+        try:
+            return chr(int(match.group(1), 16))
+        except (ValueError, OverflowError):
+            return match.group(0)
 
+    text = re.sub(r"\[:([0-9A-Fa-f]{4,6})]", replace_unicode, text)
 
-def _trim_text(text: str, limit: int) -> str:
-    """Обрезает текст до указанной длины"""
-    text = text.strip()
+    if limit is not None and len(text) > limit:
+        text = text[:limit].rstrip() + "..."
 
-    if len(text) <= limit:
-        return text
-
-    return text[:limit].rstrip() + "..."
+    return text

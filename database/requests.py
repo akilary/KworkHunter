@@ -54,9 +54,9 @@ def add_orders(orders: list[Order]) -> None:
             )
 
             log.info(
-                "Заказы сохранены в базу данных: новых=%d | передано=%d",
+                "Заказы сохранены в базу данных: добавлено=%d | передано=%d",
                 con.total_changes,
-                len(orders),
+                len(orders)
             )
     except sqlite3.Error:
         log.exception("Ошибка при сохранении заказов в базу данных")
@@ -73,7 +73,7 @@ def get_processed_order_ids() -> set[int]:
             cur.execute("SELECT external_id FROM Orders")
             return {row[0] for row in cur.fetchall()}
     except sqlite3.Error:
-        log.exception("Ошибка при загрузке ID обработанных заказов из базы данных")
+        log.exception("Ошибка при загрузке ID обработанных заказов")
         raise
 
 

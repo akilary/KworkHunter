@@ -23,18 +23,14 @@ def check_kwork_orders() -> KworkCheckResult:
     kwork_client = KworkClient()
 
     if cfg.USE_REGISTRATION:
-        log.info("Авторизация в Kwork...")
-
+        log.info("Авторизация в Kwork")
         if not kwork_client.login(cfg.EMAIL, cfg.PASSWORD):
-            log.error("Не удалось авторизоваться в Kwork")
             return KworkCheckResult(0, 0, 0, 0, [])
-
-        log.info("Авторизация выполнена успешно")
 
     all_orders = []
     page = 1
+
     while True:
-        log.info("Загружаем страницу заказов: %d", page)
         html_page = kwork_client.get_projects_page(page)
         if not html_page:
             log.info("Страница %d пустая или недоступна. Завершаем сбор заказов", page)
@@ -43,15 +39,16 @@ def check_kwork_orders() -> KworkCheckResult:
         orders = parse_orders(html_page)
         all_orders += orders
 
-        log.info("Страница %d обработана: найдено заказов - %d", page, len(orders))
+        log.debug("Страница %d обработана: заказов=%d | всего собрано=%d", page, len(orders), len(all_orders))
         page += 1
 
         delay = uniform(2.2, 5.8)
         log.debug("Пауза перед следующей страницей: %.2f сек.", delay)
         sleep(delay)
 
+    log.info("Фильтрация заказов по ключевым словам: всего=%d", len(all_orders))
+
     passed_orders = []
-    log.info("Начинаем фильтрацию заказов по ключевым словам")
     for order in all_orders:
         order_analysis = analyze_order_text(order.description, keywords)
 
@@ -68,11 +65,7 @@ def check_kwork_orders() -> KworkCheckResult:
             )
 
     if cfg.USE_REGISTRATION and passed_orders:
-        order_ids = [order.id for order in passed_orders]
-        log.info("Отправляем просмотры офферов для заказов: %d", len(order_ids))
-
-        kwork_client.add_offer_views(order_ids)
-        log.info("Просмотры офферов успешно отправлены")
+        kwork_client.add_offer_views([order.id for order in passed_orders])
 
     processed_order_ids = get_processed_order_ids()
 
@@ -95,12 +88,12 @@ def check_kwork_orders() -> KworkCheckResult:
 
     passed_orders = new_passed_orders
 
-    log.info("Работа завершена")
     log.info(
-        "Итог: обработано страниц - %d | всего заказов - %d | подошло - %d",
+        "Проверка завершена: страниц=%d | всего заказов=%d | прошли фильтр=%d | новых=%d",
         page - 1,
         len(all_orders),
         len(passed_orders),
+        len(new_passed_orders),
     )
 
     return KworkCheckResult(
